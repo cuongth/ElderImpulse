@@ -3,8 +3,9 @@
 //|                        Copyright 2018, MetaQuotes Software Corp. |
 //|                                             https://www.mql5.com |
 //+------------------------------------------------------------------+
+#property copyright "Cuong Thai"
 #include <MovingAverages.mqh>
-#property indicator_buffers 7
+#property indicator_buffers 8
 #property indicator_plots 1                  //Number of graphic plots
 #property indicator_type1 DRAW_COLOR_BARS    //Drawing style - color candles
 #property indicator_color1 Red,Blue,Green
@@ -18,9 +19,11 @@ double buffer_open[],buffer_high[],buffer_low[],buffer_close[]; //Buffers for da
 double barColors[];
 double ExtFastMaBuffer[];
 double ExtSlowMaBuffer[];
+double ExtEMaBuffer[];
 //--- MA handles
 int ExtFastMaHandle;
 int ExtSlowMaHandle;
+int ExtEMaHandle;
 //+------------------------------------------------------------------+
 //| Custom indicator initialization function                         |
 //+------------------------------------------------------------------+
@@ -42,6 +45,7 @@ int OnInit()
    
    ExtFastMaHandle=iMA(NULL,0,InpFast,0,MODE_EMA,InpAppliedPrice);
    ExtSlowMaHandle=iMA(NULL,0,InpSlow,0,MODE_EMA,InpAppliedPrice);
+   ExtEMaHandle=iMA(NULL,0,EMA,0,MODE_EMA,InpAppliedPrice);
 //---
    return(INIT_SUCCEEDED);
   }
@@ -90,30 +94,39 @@ int OnCalculate(const int rates_total,
       Print("Getting fast EMA is failed! Error",GetLastError());
       return(0);
      }
-//--- get SlowSMA buffer
+//--- get Slow EMA buffer
    if(IsStopped()) return(0); //Checking for stop flag
    if(CopyBuffer(ExtSlowMaHandle,0,0,to_copy,ExtSlowMaBuffer)<=0)
      {
-      Print("Getting slow SMA is failed! Error",GetLastError());
+      Print("Getting slow EMA is failed! Error",GetLastError());
+      return(0);
+     }
+//--- get EMA13 buffer
+   if(IsStopped()) return(0); //Checking for stop flag
+   if(CopyBuffer(ExtEMaHandle,0,0,to_copy,ExtEMaBuffer)<=0)
+     {
+      Print("Getting EMA 13 is failed! Error",GetLastError());
       return(0);
      }
 //---
    int limit;
    if(prev_calculated==0)
-      limit=0;
-   else limit=prev_calculated-1;
+      limit=1;
+   else limit=prev_calculated;
 //--- calculate MACD
-   double ExtMacdBuffer = 0.0;
+   double Macd1 = 0.0;
+   double Macd2 = 0.0;
    for(int i=limit;i<rates_total && !IsStopped();i++) {
       //Set data for plotting
       buffer_open[i]=open[i];
       buffer_high[i]=high[i];
       buffer_low[i]=low[i];
       buffer_close[i]=close[i];
-      ExtMacdBuffer=ExtFastMaBuffer[i]-ExtSlowMaBuffer[i];
-      if (ExtMacdBuffer > 0)
+      Macd2=ExtFastMaBuffer[i]-ExtSlowMaBuffer[i];
+      Macd1=ExtFastMaBuffer[i-1]-ExtSlowMaBuffer[i-1];
+      if ((Macd2 > Macd1) && (ExtEMaBuffer[i] > ExtEMaBuffer[i-1]))
          barColors[i] = 2;
-      else if (ExtMacdBuffer < 0)
+      else if ((Macd2 < Macd1) && (ExtEMaBuffer[i] < ExtEMaBuffer[i-1]))
          barColors[i] = 0;
       else
          barColors[i] = 1;

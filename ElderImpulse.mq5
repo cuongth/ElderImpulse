@@ -37,12 +37,13 @@ int OnInit()
    SetIndexBuffer(4,barColors,INDICATOR_COLOR_INDEX);
    SetIndexBuffer(5,ExtFastMaBuffer,INDICATOR_CALCULATIONS);
    SetIndexBuffer(6,ExtSlowMaBuffer,INDICATOR_CALCULATIONS);
-   
+   SetIndexBuffer(7,ExtEMaBuffer,INDICATOR_CALCULATIONS);
+
    PlotIndexSetInteger(0,PLOT_COLOR_INDEXES,3);
    PlotIndexSetInteger(0,PLOT_LINE_COLOR,0,Red);
    PlotIndexSetInteger(0,PLOT_LINE_COLOR,1,Blue);
    PlotIndexSetInteger(0,PLOT_LINE_COLOR,2,Green);
-   
+
    ExtFastMaHandle=iMA(NULL,0,InpFast,0,MODE_EMA,InpAppliedPrice);
    ExtSlowMaHandle=iMA(NULL,0,InpSlow,0,MODE_EMA,InpAppliedPrice);
    ExtEMaHandle=iMA(NULL,0,EMA,0,MODE_EMA,InpAppliedPrice);
@@ -110,28 +111,37 @@ int OnCalculate(const int rates_total,
      }
 //---
    int limit;
-   if(prev_calculated==0)
-      limit=1;
-   else limit=prev_calculated;
-//--- calculate MACD
    double Macd1 = 0.0;
    double Macd2 = 0.0;
-   for(int i=limit;i<rates_total && !IsStopped();i++) {
+   if(prev_calculated==0)
+      limit=0;
+   else
+      limit=prev_calculated-1;
+//--- calculate MACD
+   for(int i=limit;i<rates_total && !IsStopped();i++)
+     {
       //Set data for plotting
       buffer_open[i]=open[i];
       buffer_high[i]=high[i];
       buffer_low[i]=low[i];
       buffer_close[i]=close[i];
-      Macd2=ExtFastMaBuffer[i]-ExtSlowMaBuffer[i];
-      Macd1=ExtFastMaBuffer[i-1]-ExtSlowMaBuffer[i-1];
-      if ((Macd2 > Macd1) && (ExtEMaBuffer[i] > ExtEMaBuffer[i-1]))
-         barColors[i] = 2;
-      else if ((Macd2 < Macd1) && (ExtEMaBuffer[i] < ExtEMaBuffer[i-1]))
-         barColors[i] = 0;
+      if(i>0)
+        {
+         Macd2=ExtFastMaBuffer[i]-ExtSlowMaBuffer[i];
+         Macd1=ExtFastMaBuffer[i-1]-ExtSlowMaBuffer[i-1];
+         if((Macd2>Macd1) && (ExtEMaBuffer[i]>ExtEMaBuffer[i-1]))
+            barColors[i]=2;
+         else if((Macd2<Macd1) && (ExtEMaBuffer[i]<ExtEMaBuffer[i-1]))
+            barColors[i]=0;
+         else
+            barColors[i]=1;
+        }
       else
-         barColors[i] = 1;
-   }
+        {
+         barColors[i]=1;
+        }
+     }
 //--- return value of prev_calculated for next call
-   return(rates_total-1);
+   return rates_total;
   }
 //+------------------------------------------------------------------+
